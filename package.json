@@ -8,6 +8,6 @@
   },
   "scripts": {
     "start": "reveal-md --theme simple README.md",
-    "build": "reveal-md --theme simple README.md --static"
+    "build": "reveal-md --theme simple README.md --static ."
   }
 }
