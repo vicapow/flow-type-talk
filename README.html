@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <title>reveal-md</title>
+    <link rel="stylesheet" href="./css/reveal.css" />
+    <link rel="stylesheet" href="./css/theme/simple.css" id="theme" />
+    <link rel="stylesheet" href="./css/highlight/zenburn.css" />
+    <link rel="stylesheet" href="./css/print/paper.css" type="text/css" media="print" />
+
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides"><section  data-markdown><script type="text/template"># Advanced features of Flowtype
+
+By: Victor Powell
+</script></section><section  data-markdown><script type="text/template">
+### Specify the Flow version explicitly
+
+````
+[version]
+0.104.0
+````
+
+<aside class="notes"><p>Configure your flowconfig file to use a specific version of Flow. This will help avoid common version mismatch issues, especially for IDEs that may attempt to use their own built in version of Flow instead of the Flow binary in your project.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+### Import only what you need
+
+````
+[ignore]
+<PROJECT_ROOT>/node_modules/.*
+````
+
+<aside class="notes"><p>Flow, by default, will attempt to parse every file in your <code>node_modules</code> directory. For even medium sized projects, this could be several hundred thousand(!) files. Most of these are unlikely to be published with types or their types live in the <a href="https://github.com/flow-typed/flow-typed">flow-typed</a> repo.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+### Explicit imports
+
+````[ignore]
+# Ignore all modules...
+<PROJECT_ROOT>/node_modules/.*
+# except these ones.
+!<PROJECT_ROOT>/node_modules/baseui/.*
+````
+
+<aside class="notes"><p>To explicitly add a dependency, use <code>!</code> in the <code>[ignore]</code> directive to specify an exception.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+### `dist` directories
+
+````
+[ignore]
+# ignore `dist` directory.
+.*/dist/.*
+````
+
+<aside class="notes"><p>Projects often also have <code>dist</code> style directories that Flow should never parse. You can also exclude those in a similar way.</p>
+</aside></script></section><section  data-markdown><script type="text/template">### Use `flow ls`
+
+````sh
+$ flow ls
+foo/bar/index.js
+node_modules/wow/index.js
+````
+
+<aside class="notes"><p>To debug what files Flow is parsing, you can use the <code>flow ls</code> command. (through yarn: <code>yarn flow ls</code>)</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+### Use `lints`
+
+````
+[lints]
+untyped-type-import=error
+untyped-import=error
+````
+
+<aside class="notes"><p>If we exclude all modules types by default, we&#39;ll also want to have a way to detect, if we&#39;re adding a new dependency, that we&#39;re not picking up any types for it. To have Flow error for imports that don&#39;t have types, use the following lint rules:</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+### type stubs
+
+````sh
+flow-typed create-stub mydep@1.x.x
+````
+
+<aside class="notes"><p>If you&#39;re just adding these rules in your project, you&#39;ll see lots of errors for untyped imports. For these, we recommend you either install the libdef from flow-typed or add a type &quot;stub&quot;.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+### clean things up
+
+````diff
+declare module 'flat' {
+  declare module.exports: any;
+}
+- declare module 'flat/cli' {
+-  declare module.exports: any;
+- }
+
+- declare module 'flat/test/test' {
+-   declare module.exports: any;
+- }
+````
+
+<aside class="notes"><p>Since these imports were previous untyped anyway, there&#39;s no additional lose of type converage. We&#39;re just making the untyped code explicitly untyped instead of implicitly untyped. That said, be careful. flow-typed might create very large stub files that have an entry for each file in the module. In most cases, you can shorten these to just a single <code>declare</code>.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+### Avoid `create-stub` for new libdefs
+
+<aside class="notes"><p>As you add new libdefs that dont already exist in flow-typed, it&#39;s better to avoid flow-typed create-stub and stub out your definitions as you need them manually. Then add the new definitions for functions or features are needed. Once your definitions reach some level of maturity, you can share them back to the flow-typed repo.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+###  Use [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) as a guide for new libdefs
+
+<aside class="notes"><p>If you can&#39;t find a type definition on flow-typed, you can also usually copy / paste the definition from the TypeScript repo and make relatively small changes to get it working.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+### Avoid "dynamic" libraries like `dotty()`
+
+<aside class="notes"><p>Try to avoid libraries with dynamic utilities. For example: <code>get(obj, &#39;.foo.bar&#39;)</code>. Because the semantics are dynamic and can only be determined at runtime, it&#39;s difficult (impossible?) for any type checker to understand this at compile time. One example of a library with lots of dynamic features is lodash.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+### Use other lint rules
+
+````js
+const x: ?number = 5;
+if (x) {} // sketchy because x could be either null or 0.
+````
+
+<aside class="notes"><p>Use <code>sketchy-null</code> to detect common issues where someone may accidently compare a string or number to a false.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+### `strict` and `strict-local`
+
+<aside class="notes"><p>For existing projects, it&#39;s usually not practical to turn on all possible checks. For this reason, you can use the <code>[strict]</code> directive to add additional type checks for files that specify <code>// @flow strict</code> or <code>// @flow strict-local</code>. The difference between the two is that strict-local will only apply to your file where as <code>@flow strict</code> also requires that any files that file depends on is also strict.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+````
+[strict]
+nonstrict-import
+unclear-type
+unsafe-getters-setters
+inexact-spread
+deprecated-call-syntax
+untyped-import
+untyped-type-import
+sketchy-null
+unnecessary-invariant
+sketchy-number-and
+deprecated-type
+````
+</script></section><section  data-markdown><script type="text/template">
+### `unclear-type`
+
+If you're going to add any lint check, the most important of these is probably `unclear-type`. It will eror if you use an `any`.
+</script></section><section  data-markdown><script type="text/template">
+#### The difference between spread and `&`
+
+`...` is usually want you want.
+
+````js
+type A = { prop: string };
+type B = { prop: number };
+
+({ prop: 'foo' }: A & B); // Error!
+({ prop: 10 }: A & B); // Error!
+({ prop: 'foo' }: {...A, ...B});
+({ prop: 10 }: {...A, ...B});
+````
+
+[[Try Flow]](https://flow.org/try/#0PTAEAEDMBsHsHcBQiAuBPADgU1AQVALygDeoGATrBgFygDOK5AlgHYDmoAvgNyqY4AhQiTKUaoFgFcAtgCMs5Lr0QAKUhSq0A5JFiwtXWvgBkoAQEpuoEKACi5SuQCEq9WNoBGAAyG8oUxZWNvaOLmqimqA6egactMQAdEm4ADSgSQkCnJauEeLevonJaRlZlkA)
+</script></section><section  data-markdown><script type="text/template">
+#### You checked if `thing` was not `undefined` but Flow still complains
+
+````js
+type Person = {| thing: string | void |};
+
+const me: Person = { thing: 'Ive got value.' };
+
+if (me.thing) {
+  doAThing();
+  print(me.thing); // Error!
+}
+
+function doAThing() {}
+function print(message: string) {}
+````
+
+    Cannot call `print` with `me.thing` bound to `message`
+    because undefined [1] is incompatible with string [2].
+
+[[Try Flow]](https://flow.org/try/#0C4TwDgpgBAChBOBnA9gOygXigbwD5WAAsBLVAcwC4pFh5Syp8A3ZYgE0YF8BuAKF4DGaGlAC2EKnCRpMOAiXJUA5AEkm0MsmBQmAQwA2AVwgA6JVB79iAMygAKcSaL0AlDl5QobZAEEAKgpkdi58nmB0qMAOps7kIbyc-NaGqALAxDLe-oHBOInJqeky4aRR4oiIumQS1LSueUA)
+
+<aside class="notes"><p>This is because Flow doesn&#39;t know for sure <code>doAThing()</code> doesn&#39;t unset <code>me.thing</code> to be <code>undefined</code> again. Another way to say this is that the refinement of <code>me.thing</code> is lost because of the call to some unrelated function that might impact the refinement. One way to fix this is to assign the value to a constant.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+````diff
+  if (me.thing) {
++   const { thing } = me;
+    doAThing();
+-   print(me.thing);
++   print(thing);
+  }
+````
+</script></section><section  data-markdown><script type="text/template">
+````diff
+  if (me.thing) {
+-   doAThing();
+    print(me.thing);
+  }
+````
+
+<aside class="notes"><p>or remove the function triggering the refinement loss.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+#### Unsealed objects are not safe
+
+````js
+const foo = {};
+foo.bar(); // No error!
+````
+[[Try Flow]](https://flow.org/try/#0MYewdgzgLgBAZiEMC8MDeBfA3AKASAOgCMBDAJwAoBKLGAejpgDkkBTMskMgQiA)
+
+<aside class="notes"><p>A somewhat misunderstood feature of Flow is that of unsealed objects.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+````js
+const foo = {};
+foo.bar = 10;
+foo.bar(); // Error!
+````
+
+<aside class="notes"><p>This isn’t quite the same as <code>any</code>. For example the following errors correctly.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+````js
+const foo: { bar?: () => null } = {};
+foo.bar(); // Error!
+````
+
+<aside class="notes"><p>Flow is attempting to track types of newly added properties. Although this is a nice feature when first migrating an untyped project to Flow, it can cause issues later. Instead of using unsealed objects, when practical, you should explicitly type empty object declarations. It seems likely that a future version of Flow may remove unsealed objects. In the meantime, to avoid issues with unsealed objects, if you want to create an empty object that is sealed, you can use <code>{...undefined}</code>.</p>
+</aside></script></section><section  data-markdown><script type="text/template">
+#### Use `$ReadOnly` to avoid mutations
+
+````js
+// @flow
+
+// Definitely has `foo`.
+const b: {| foo: string |} = { foo: 'foo' };
+
+function func1(a: {| foo: string | void |}) {
+  // This signature says "I might set `a.foo`
+  // to undefined."
+}
+
+func1(b); // Error!
+
+````
+</script></section><section  data-markdown><script type="text/template">
+````js
+
+// Definitely has `foo`.
+const b: {| foo: string |} = { foo: 'foo' };
+
+function func2(a: $ReadOnly<{| foo: string | void |}>) {
+ // This signature says "I wont modify touch the
+ // properties of `a`."
+}
+
+func2(b); // Works!
+````
+
+[[Try Flow]](https://flow.org/try/#0PTAEAEDMBsHsHcBQiDGsB2BnALqARgFygDeAPqJLLETgE4CW6A5qKQL6gC8JFVRA5JVj9QbANygQoACIBTSI3rZZ0AJ6gAFgENMoAAZC9AOmSQAruhTZ6GChZQBGABRaiZXtVB1GLcgDdYegATVjYAShJEUEkwABUNel1MeiZ0LWwzWlkvLVVdACIASVAAWxSNXExZXD0tI0NQbFhQCyD5Rlkgo3zENlN7ZzwwiSkAUVpaWFoAQn7La1tzSwAmFyIAEgAlWS0ggHl0NQAedyEabAZmVlAA4NCAPgjiKKl4xK8UtIysnLzQItA8AwuBKsCC9Eg6iaZhQGkaGmyAAdJojZLRrLJdLBIPotMYen1EEsUKshiMwAB1KYAa0wsyAA)
+</script></section><section  data-markdown><script type="text/template">
+#### Flow does not enforce existance on array index access
+
+````js
+const a: Array<{|foo: string|}> = [];
+const b: string = a[0].foo; // `b` is actually undefined!
+````
+
+[[Try Flow]](https://flow.org/try/#0MYewdgzgLgBAhgLhgQQE6rgTwDwG8A+AZiCEtKgJZgDm+AvgHwwC8MA2gLoDcAUKJLABGZKJRot4bAAwcAdMRBcYAemUwABoPUwKEeMCgBXOABsTmGIbAATAKaEqt6wEIgA)
+</script></section><section  data-markdown><script type="text/template">
+#### 'Coverage' can be helpful but don't let it mislead you
+
+<img width="494" alt="Screen Shot 2019-08-13 at 12 17 51 AM" src="https://user-images.githubusercontent.com/583385/62922256-d4b9cd00-bd5f-11e9-8c07-063e6b05c454.png">
+
+</script></section><section  data-markdown><script type="text/template">
+That said, there was recently added experimental support for "trusted" coverage.
+
+<img width="959" alt="Screen Shot 2019-08-12 at 10 26 45 PM" src="https://user-images.githubusercontent.com/583385/62917516-6d951c00-bd51-11e9-9b7e-de990457c17f.png">
+</script></section></div>
+    </div>
+
+    <script src="./js/reveal.js"></script>
+
+    <script>
+      function extend() {
+        var target = {};
+        for (var i = 0; i < arguments.length; i++) {
+          var source = arguments[i];
+          for (var key in source) {
+            if (source.hasOwnProperty(key)) {
+              target[key] = source[key];
+            }
+          }
+        }
+        return target;
+      }
+
+      // Optional libraries used to extend on reveal.js
+      var deps = [
+        { src: './plugin/markdown/marked.js', condition: function() { return !!document.querySelector('[data-markdown]'); } },
+        { src: './plugin/markdown/markdown.js', condition: function() { return !!document.querySelector('[data-markdown]'); } },
+        { src: './plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+        { src: './plugin/zoom-js/zoom.js', async: true },
+        { src: './plugin/notes/notes.js', async: true },
+        { src: './plugin/math/math.js', async: true }
+      ];
+
+      // default options to init reveal.js
+      var defaultOptions = {
+        controls: true,
+        progress: true,
+        history: true,
+        center: true,
+        transition: 'default', // none/fade/slide/convex/concave/zoom
+        dependencies: deps
+      };
+
+      // options from URL query string
+      var queryOptions = Reveal.getQueryHash() || {};
+
+      var options = extend(defaultOptions, {}, queryOptions);
+    </script>
+
+
+    <script>
+      Reveal.initialize(options);
+    </script>
+  </body>
+</html>
